@@ -9,8 +9,8 @@ function App() {
     <Router>
       <div className="container">
         <header className="header">
-          <h1><Trophy size={40} className="text-gold" /> Bet do Rancho</h1>
-          <p className="text-text-muted">Bolão de Futebol Semanal</p>
+          <h1>🤠 Bet do Mineiro 🌾</h1>
+          <p className="text-text-muted">Bolão de Futebol Raiz 🚬</p>
         </header>
 
         <nav className="navbar">

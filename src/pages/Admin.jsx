@@ -7,7 +7,7 @@ export default function Admin() {
   const [auth, setAuth] = useState(false);
   const [password, setPassword] = useState('');
   
-  const { currentWeek, games, addGame, removeGame, updateGameStatus, updateGameResult, startNewWeek, loading } = useBolaoData();
+  const { currentWeek, games, addGame, removeGame, updateGameStatus, updateGameResult, updateLiveScore, startNewWeek, loading } = useBolaoData();
 
   const [homeTeam, setHomeTeam] = useState('');
   const [awayTeam, setAwayTeam] = useState('');
@@ -20,8 +20,11 @@ export default function Admin() {
   useEffect(() => {
     if (!auth || games.length === 0) return;
 
+    let tickCount = 0;
+
     const checkAutomations = async () => {
       const now = new Date();
+      tickCount++;
 
       for (const g of games) {
         if (!g.date || !g.time) continue;
@@ -36,9 +39,19 @@ export default function Admin() {
           await updateGameStatus(g.id, 'in_progress');
         }
 
+        // Rule 1.5: If in_progress, update live score every 10 minutes (5 ticks of 2 mins)
+        // We also run it immediately on the first tick to get initial score if just entering
+        if (g.status === 'in_progress' && (tickCount === 1 || tickCount % 5 === 0)) {
+          console.log(`Buscando placar ao vivo para ${g.homeTeam} x ${g.awayTeam}...`);
+          const aiResult = await fetchGameResultWithAI(g.homeTeam, g.awayTeam, g.date);
+          if (aiResult.found && aiResult.homeScore !== undefined && aiResult.awayScore !== undefined) {
+            await updateLiveScore(g.id, aiResult.homeScore, aiResult.awayScore);
+          }
+        }
+
         // Rule 2: > 105 mins => Searching (if it was in progress or pending)
         if (diffInMinutes >= 105 && (g.status === 'in_progress' || g.status === 'pending')) {
-          console.log(`Jogo ${g.homeTeam} x ${g.awayTeam} chegou aos 105 minutos. Iniciando busca...`);
+          console.log(`Jogo ${g.homeTeam} x ${g.awayTeam} chegou aos 105 minutos. Iniciando busca final...`);
           await updateGameStatus(g.id, 'searching');
           
           // Trigger AI Search
@@ -61,6 +74,9 @@ export default function Admin() {
         }
       }
     };
+
+    // Roda a verificação imediatamente ao carregar/atualizar
+    checkAutomations();
 
     const intervalId = setInterval(checkAutomations, 2 * 60 * 1000); // 2 minutes
     return () => clearInterval(intervalId);

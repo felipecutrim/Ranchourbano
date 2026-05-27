@@ -12,12 +12,12 @@ export async function fetchGameResultWithAI(homeTeam, awayTeam, dateStr) {
   });
 
   const prompt = `Você é um assistente especializado em futebol.
-Eu preciso saber o resultado final do jogo entre ${homeTeam} (Mandante) e ${awayTeam} (Visitante) que ocorreu ou estava marcado para a data ${dateStr}.
+Eu preciso saber o resultado do jogo entre ${homeTeam} (Mandante) e ${awayTeam} (Visitante) que ocorreu ou está marcado para a data ${dateStr}.
 
-Se você tem conhecimento do resultado real deste jogo, retorne APENAS um objeto JSON estrito com o seguinte formato:
+Se você tem conhecimento do resultado final ou do PLACAR PARCIAL ATUAL deste jogo (caso ele esteja acontecendo agora), retorne APENAS um objeto JSON estrito com o seguinte formato:
 {"found": true, "homeScore": 2, "awayScore": 1}
 
-Se o jogo ainda não terminou, foi cancelado, ou você não tem certeza absoluta do resultado real final porque sua base de dados não contempla esse dia específico, retorne APENAS:
+Se o jogo ainda não começou, foi cancelado, ou você não consegue encontrar nenhuma informação de placar para ele hoje, retorne APENAS:
 {"found": false}
 
 Não inclua nenhum texto adicional, apenas o JSON.`;

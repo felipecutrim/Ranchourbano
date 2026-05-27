@@ -1,12 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useBolaoData } from '../hooks/useBolaoData';
 import { Users, Save } from 'lucide-react';
+
+const FRASES_BOLEIRO = [
+  "O jogo só acaba quando termina, sô!",
+  "Futebol é uma caixinha de surpresas.",
+  "Clássico é clássico e vice-versa.",
+  "A bola pune, meu cumpade.",
+  "Quem não faz, toma!",
+  "Treino é treino, jogo é jogo.",
+  "Se a bola não entrar, não é gol.",
+  "Haja coração, amigo!",
+  "O professor pediu pra fechar a casinha."
+];
 
 export default function Participant() {
   const { currentWeek, games, participants, submitGuesses, loading } = useBolaoData();
   const [name, setName] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   
+  // Frases mapeadas por jogo para não mudar a cada re-render
+  const frases = useMemo(() => {
+    const map = {};
+    games.forEach((g, idx) => {
+      map[g.id] = FRASES_BOLEIRO[idx % FRASES_BOLEIRO.length];
+    });
+    return map;
+  }, [games]);
+
   // Local state for guesses before submitting
   const [guesses, setGuesses] = useState({});
   const [errorMsg, setErrorMsg] = useState('');
@@ -124,6 +145,12 @@ export default function Participant() {
 
                 <div className="team away">{g.awayTeam}</div>
               </div>
+
+              {isPending && (
+                <div className="mt-4 text-center text-text-muted" style={{fontStyle: 'italic', fontSize: '0.85rem'}}>
+                  "{frases[g.id]}"
+                </div>
+              )}
 
               {!isPending && (
                 <div className="mt-4 text-center text-text-muted" style={{fontSize: '0.875rem'}}>

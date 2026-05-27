@@ -81,6 +81,13 @@ export function useBolaoData() {
     });
   };
 
+  const updateLiveScore = async (gameId, homeScore, awayScore) => {
+    await updateDoc(doc(db, 'games', gameId), {
+      homeScore: Number(homeScore),
+      awayScore: Number(awayScore)
+    });
+  };
+
   const updateGameResult = async (gameId, homeScore, awayScore) => {
     await updateDoc(doc(db, 'games', gameId), {
       status: 'finished',
@@ -221,6 +228,7 @@ export function useBolaoData() {
     removeGame,
     updateGameResult,
     updateGameStatus,
+    updateLiveScore,
     startNewWeek,
     submitGuesses
   };

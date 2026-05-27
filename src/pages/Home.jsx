@@ -18,69 +18,118 @@ export default function Home() {
   };
 
   return (
-    <div className="glass-panel">
-      <div className="flex justify-between items-center mb-4">
-        <h2>Classificação da Semana <span className="week-badge">{currentWeek}</span></h2>
-        <div className="text-text-muted">{games.length} Jogos na rodada</div>
-      </div>
+    <div className="grid gap-6">
+      {/* SEÇÃO 1: Jogos da Rodada */}
+      <div className="glass-panel">
+        <div className="flex justify-between items-center mb-4">
+          <h2>Jogos da Rodada <span className="week-badge">{currentWeek}</span></h2>
+          <div className="text-text-muted">{games.length} Jogos</div>
+        </div>
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th width="60">Pos</th>
-              <th>Nome</th>
-              <th className="text-center">Pontos</th>
-              <th className="text-center">Cravadas (3p)</th>
-              <th className="text-center">Acertos (1p)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {participants.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="text-center text-text-muted py-4">Nenhum participante ainda.</td>
-              </tr>
-            ) : (
-              participants.map((p, index) => (
-                <tr key={p.id}>
-                  <td>
-                    <div className={`rank-badge ${index < 3 ? 'rank-' + (index + 1) : ''}`}>
-                      {index + 1}
-                    </div>
-                  </td>
-                  <td>
-                    <button 
-                      onClick={() => setSelectedParticipant(p)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--color-gold)',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      {p.name}
-                    </button>
-                    {p.lastUpdated && (
-                      <div className="text-text-muted" style={{ fontSize: '0.75rem', marginTop: '4px' }}>
-                        Atualizado em: {formatDate(p.lastUpdated)}
+        {games.length === 0 ? (
+          <p className="text-text-muted">Nenhum jogo cadastrado para esta rodada.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {games.map(g => {
+              let statusText = 'AGUARDANDO';
+              let statusClass = 'text-text-muted';
+              if (g.status === 'in_progress') { statusText = 'EM ANDAMENTO'; statusClass = 'text-success'; }
+              if (g.status === 'searching') { statusText = 'BUSCANDO RESULTADO...'; statusClass = 'text-gold'; }
+              if (g.status === 'verifying') { statusText = 'VERIFICANDO...'; statusClass = 'text-gold'; }
+              if (g.status === 'finished') { statusText = 'ENCERRADO'; statusClass = 'text-danger'; }
+
+              const showScore = g.status === 'in_progress' || g.status === 'finished' || g.status === 'searching' || g.status === 'verifying';
+
+              return (
+                <div key={g.id} className="match-card">
+                  <div className="match-header" style={{ marginBottom: '0.5rem', paddingBottom: '0.5rem' }}>
+                    <span>{g.date} {g.time && `- ${g.time}`}</span>
+                    <span className={statusClass}>
+                      {statusText}
+                    </span>
+                  </div>
+                  
+                  <div className="match-teams mb-2">
+                    <div className="team home">{g.homeTeam}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="form-input score-input" style={{ padding: '0.25rem', height: 'auto', backgroundColor: 'rgba(230, 194, 128, 0.1)', color: showScore ? '#fff' : 'transparent' }}>
+                        {showScore && g.homeScore !== null && g.homeScore !== undefined ? g.homeScore : '-'}
                       </div>
-                    )}
-                  </td>
-                  <td className="text-center font-bold" style={{ fontSize: '1.25rem' }}>{p.totalPoints}</td>
-                  <td className="text-center text-success font-bold">{p.exactHits}</td>
-                  <td className="text-center text-gold font-bold">{p.resultHits}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      <span className="score-divider">X</span>
+                      <div className="form-input score-input" style={{ padding: '0.25rem', height: 'auto', backgroundColor: 'rgba(230, 194, 128, 0.1)', color: showScore ? '#fff' : 'transparent' }}>
+                        {showScore && g.awayScore !== null && g.awayScore !== undefined ? g.awayScore : '-'}
+                      </div>
+                    </div>
+                    <div className="team away">{g.awayTeam}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="mt-8 text-center text-text-muted" style={{ fontSize: '0.875rem' }}>
-        <p>Regras: Placar Exato = 3 pontos | Acertar o Vencedor/Empate = 1 ponto</p>
+      {/* SEÇÃO 2: Classificação */}
+      <div className="glass-panel">
+        <h2 className="mb-4">Classificação</h2>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th width="60">Pos</th>
+                <th>Nome</th>
+                <th className="text-center">Pontos</th>
+                <th className="text-center">Cravadas (3p)</th>
+                <th className="text-center">Acertos (1p)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {participants.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center text-text-muted py-4">Nenhum participante ainda.</td>
+                </tr>
+              ) : (
+                participants.map((p, index) => (
+                  <tr key={p.id}>
+                    <td>
+                      <div className={`rank-badge ${index < 3 ? 'rank-' + (index + 1) : ''}`}>
+                        {index + 1}
+                      </div>
+                    </td>
+                    <td>
+                      <button 
+                        onClick={() => setSelectedParticipant(p)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--color-gold)',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        {p.name}
+                      </button>
+                      {p.lastUpdated && (
+                        <div className="text-text-muted" style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                          Atualizado em: {formatDate(p.lastUpdated)}
+                        </div>
+                      )}
+                    </td>
+                    <td className="text-center font-bold" style={{ fontSize: '1.25rem' }}>{p.totalPoints}</td>
+                    <td className="text-center text-success font-bold">{p.exactHits}</td>
+                    <td className="text-center text-gold font-bold">{p.resultHits}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-8 text-center text-text-muted" style={{ fontSize: '0.875rem' }}>
+          <p>Regras: Placar Exato = 3 pontos | Acertar o Vencedor/Empate = 1 ponto</p>
+        </div>
       </div>
 
       {/* Modal de Palpites do Participante */}
@@ -118,7 +167,7 @@ export default function Home() {
                   <div key={g.id} className="match-card">
                     <div className="match-header" style={{ marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <span>{g.date} {g.time && `- ${g.time}`}</span>
-                      <span className={g.status === 'finished' ? 'text-success' : 'text-gold'}>
+                      <span className={g.status === 'finished' ? 'text-danger' : 'text-gold'}>
                         {g.status === 'finished' ? 'ENCERRADO' : 'EM ABERTO'}
                       </span>
                     </div>
@@ -126,11 +175,11 @@ export default function Home() {
                     <div className="match-teams mb-2">
                       <div className="team home">{g.homeTeam}</div>
                       <div className="flex items-center gap-2">
-                        <div className="form-input score-input" style={{ padding: '0.25rem', height: 'auto', backgroundColor: 'rgba(212, 175, 55, 0.1)' }}>
+                        <div className="form-input score-input" style={{ padding: '0.25rem', height: 'auto', backgroundColor: 'rgba(230, 194, 128, 0.1)' }}>
                           {hasGuess ? guess.home : '-'}
                         </div>
                         <span className="score-divider">X</span>
-                        <div className="form-input score-input" style={{ padding: '0.25rem', height: 'auto', backgroundColor: 'rgba(212, 175, 55, 0.1)' }}>
+                        <div className="form-input score-input" style={{ padding: '0.25rem', height: 'auto', backgroundColor: 'rgba(230, 194, 128, 0.1)' }}>
                           {hasGuess ? guess.away : '-'}
                         </div>
                       </div>
