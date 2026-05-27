@@ -15,7 +15,7 @@ export async function fetchFixturesByDateAndLeague(dateStr, leagueId) {
   const year = dateStr.split('-')[0];
 
   try {
-    const response = await fetch(\`https://v3.football.api-sports.io/fixtures?date=\${dateStr}&league=\${leagueId}&season=\${year}\`, {
+    const response = await fetch(`https://v3.football.api-sports.io/fixtures?date=${dateStr}&league=${leagueId}&season=${year}`, {
       method: "GET",
       headers: {
         "x-rapidapi-host": "v3.football.api-sports.io",
