@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useBolaoData } from '../hooks/useBolaoData';
-import { ShieldAlert, Plus, Trash2, Bot, RefreshCw } from 'lucide-react';
+import { ShieldAlert, Plus, Trash2, Bot, RefreshCw, Download } from 'lucide-react';
 import { fetchGameResultWithAI } from '../utils/ai';
+import { fetchFixturesByDateAndLeague, LEAGUES } from '../utils/sportsApi';
 
 export default function Admin() {
   const [auth, setAuth] = useState(false);
@@ -15,6 +16,12 @@ export default function Admin() {
   const [gameTime, setGameTime] = useState('');
   
   const [results, setResults] = useState({});
+
+  // States for API Import
+  const [importDate, setImportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [importLeague, setImportLeague] = useState(LEAGUES[0].id);
+  const [importedGames, setImportedGames] = useState([]);
+  const [isImporting, setIsImporting] = useState(false);
 
   // --- AUTOMATION LOOP ---
   useEffect(() => {
@@ -128,6 +135,28 @@ export default function Admin() {
     }
   };
 
+  const handleFetchApi = async (e) => {
+    e.preventDefault();
+    setIsImporting(true);
+    try {
+      const data = await fetchFixturesByDateAndLeague(importDate, importLeague);
+      setImportedGames(data);
+      if (data.length === 0) {
+        alert("Nenhum jogo encontrado para esta data e liga.");
+      }
+    } catch (err) {
+      alert("Erro ao buscar jogos: " + err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleAddImportedGame = async (g) => {
+    await addGame(g.homeTeam, g.awayTeam, g.date, g.time);
+    // Remove from imported list after adding
+    setImportedGames(importedGames.filter(ig => ig.id !== g.id));
+  };
+
   if (!auth) {
     return (
       <div className="glass-panel" style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -154,9 +183,62 @@ export default function Admin() {
 
   return (
     <div className="grid gap-6">
+      {/* SEÇÃO IMPORTAR API */}
+      <div className="glass-panel" style={{ borderColor: 'var(--color-primary)' }}>
+        <h2 className="mb-4 flex items-center gap-2 text-primary">
+          <Download size={24} /> Importar Jogos Oficiais API
+        </h2>
+        <form onSubmit={handleFetchApi} className="flex flex-col gap-4 mb-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-group mb-0">
+              <label className="form-label">Campeonato</label>
+              <select 
+                className="form-input" 
+                value={importLeague} 
+                onChange={e => setImportLeague(e.target.value)}
+              >
+                {LEAGUES.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group mb-0">
+              <label className="form-label">Data dos Jogos</label>
+              <input 
+                type="date" 
+                className="form-input" 
+                value={importDate}
+                onChange={e => setImportDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <button type="submit" className="btn" disabled={isImporting} style={{ backgroundColor: '#1e40af' }}>
+            {isImporting ? 'Buscando...' : 'Buscar Jogos'}
+          </button>
+        </form>
+
+        {importedGames.length > 0 && (
+          <div className="mt-4 border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <h3 className="mb-2 text-gold">Resultados da Busca</h3>
+            <div className="grid gap-2">
+              {importedGames.map(g => (
+                <div key={g.id} className="flex justify-between items-center p-2 rounded" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
+                  <div>
+                    <strong className="text-text">{g.time}</strong> - {g.homeTeam} x {g.awayTeam}
+                  </div>
+                  <button onClick={() => handleAddImportedGame(g)} className="btn btn-sm btn-gold">
+                    <Plus size={16}/> Adicionar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="glass-panel">
         <div className="flex justify-between items-center mb-4">
-          <h2>Gerenciar Semana {currentWeek}</h2>
+          <h2>Adicionar Jogo Manualmente (Semana {currentWeek})</h2>
           <button onClick={handleNewWeek} className="btn btn-danger btn-sm"><RefreshCw size={16}/> Iniciar Nova Semana</button>
         </div>
 
