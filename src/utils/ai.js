@@ -44,3 +44,54 @@ Não inclua nenhum texto adicional, apenas o JSON.`;
     return { found: false };
   }
 }
+
+export async function fetchFixturesWithAI(dateStr, leagueName) {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey === "sua_chave_anthropic") {
+    throw new Error("Chave da API da Anthropic não configurada.");
+  }
+
+  const anthropic = new Anthropic({
+    apiKey: apiKey,
+    dangerouslyAllowBrowser: true
+  });
+
+  const prompt = `Você é um assistente especializado em futebol e calendários esportivos.
+Eu preciso da lista de jogos OFICIAIS marcados para o campeonato "${leagueName}" na data ${dateStr}.
+
+IMPORTANTE: 
+1. Retorne APENAS um array JSON estrito contendo os jogos.
+2. Não adicione NENHUM texto antes ou depois do JSON. Sem saudações.
+3. Se não houver jogos para esta data e liga, retorne um array vazio: []
+
+O formato JSON de cada jogo deve ser exato:
+[
+  {
+    "time": "16:00",
+    "homeTeam": "Flamengo",
+    "awayTeam": "Vasco",
+    "date": "${dateStr}"
+  }
+]`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-3-haiku-20240307",
+      max_tokens: 500,
+      temperature: 0,
+      system: "Você é uma API de dados esportivos. Você só responde com um array JSON válido e mais nada.",
+      messages: [
+        { role: "user", content: prompt }
+      ]
+    });
+
+    const textResponse = response.content[0].text.trim();
+    const jsonStr = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(jsonStr);
+
+    return Array.isArray(result) ? result : [];
+  } catch (error) {
+    console.error("Erro ao buscar jogos com IA:", error);
+    throw new Error("Falha ao processar os jogos com a Inteligência Artificial.");
+  }
+}

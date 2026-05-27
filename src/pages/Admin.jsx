@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useBolaoData } from '../hooks/useBolaoData';
 import { ShieldAlert, Plus, Trash2, Bot, RefreshCw, Download } from 'lucide-react';
-import { fetchGameResultWithAI } from '../utils/ai';
-import { fetchFixturesByDateAndLeague, LEAGUES } from '../utils/sportsApi';
+import { fetchGameResultWithAI, fetchFixturesWithAI } from '../utils/ai';
 
+const LEAGUES = [
+  "Brasileirão Série A",
+  "Brasileirão Série B",
+  "Brasileirão Série C",
+  "Copa do Brasil",
+  "Copa do Mundo",
+  "Libertadores"
+];
 export default function Admin() {
   const [auth, setAuth] = useState(false);
   const [password, setPassword] = useState('');
@@ -19,7 +26,7 @@ export default function Admin() {
 
   // States for API Import
   const [importDate, setImportDate] = useState(new Date().toISOString().split('T')[0]);
-  const [importLeague, setImportLeague] = useState(LEAGUES[0].id);
+  const [importLeague, setImportLeague] = useState(LEAGUES[0]);
   const [importedGames, setImportedGames] = useState([]);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -139,8 +146,12 @@ export default function Admin() {
     e.preventDefault();
     setIsImporting(true);
     try {
-      const data = await fetchFixturesByDateAndLeague(importDate, importLeague);
-      setImportedGames(data);
+      const data = await fetchFixturesWithAI(importDate, importLeague);
+      
+      // Since AI doesn't generate unique IDs like an API, we inject a temporary id for the UI list
+      const gamesWithId = data.map((g, idx) => ({ ...g, id: `ai-${Date.now()}-${idx}` }));
+      
+      setImportedGames(gamesWithId);
       if (data.length === 0) {
         alert("Nenhum jogo encontrado para esta data e liga.");
       }
@@ -183,10 +194,10 @@ export default function Admin() {
 
   return (
     <div className="grid gap-6">
-      {/* SEÇÃO IMPORTAR API */}
+      {/* SEÇÃO IMPORTAR IA */}
       <div className="glass-panel" style={{ borderColor: 'var(--color-primary)' }}>
         <h2 className="mb-4 flex items-center gap-2 text-primary">
-          <Download size={24} /> Importar Jogos Oficiais API
+          <Download size={24} /> Buscar Jogos com Inteligência Artificial
         </h2>
         <form onSubmit={handleFetchApi} className="flex flex-col gap-4 mb-4">
           <div className="grid grid-cols-2 gap-4">
@@ -197,8 +208,8 @@ export default function Admin() {
                 value={importLeague} 
                 onChange={e => setImportLeague(e.target.value)}
               >
-                {LEAGUES.map(l => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
+                {LEAGUES.map((l, idx) => (
+                  <option key={idx} value={l}>{l}</option>
                 ))}
               </select>
             </div>
