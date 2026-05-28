@@ -91,6 +91,6 @@ O formato JSON de cada jogo deve ser exato:
     return [];
   } catch (error) {
     console.error("Erro ao buscar jogos com IA Gemini:", error);
-    throw new Error("Falha ao processar os jogos com a Inteligência Artificial Gemini.");
+    throw new Error(`Falha Gemini: ${error.message}`);
   }
 }
