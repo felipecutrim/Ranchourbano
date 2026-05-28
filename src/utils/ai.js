@@ -25,11 +25,12 @@ Não inclua nenhum texto adicional, apenas o JSON válido.`;
       contents: prompt,
       config: {
         temperature: 0,
-        responseMimeType: "application/json"
+        tools: [{ googleSearch: {} }]
       }
     });
 
-    const textResponse = response.text.trim();
+    let textResponse = response.text.trim();
+    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
     const result = JSON.parse(textResponse);
 
     return result;
@@ -71,12 +72,14 @@ O formato JSON de cada jogo deve ser exato:
       contents: prompt,
       config: {
         temperature: 0,
-        responseMimeType: "application/json",
         tools: [{ googleSearch: {} }]
       }
     });
 
-    const textResponse = response.text.trim();
+    let textResponse = response.text.trim();
+    // Limpa possíveis marcações de markdown (```json e ```) que a IA possa adicionar
+    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+    
     const result = JSON.parse(textResponse);
 
     return Array.isArray(result) ? result : [];
