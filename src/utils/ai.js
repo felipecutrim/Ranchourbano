@@ -30,10 +30,14 @@ Não inclua nenhum texto adicional, apenas o JSON válido.`;
     });
 
     let textResponse = response.text.trim();
-    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(textResponse);
-
-    return result;
+    // Extrai apenas a parte que é JSON (objeto), caso o Gemini adicione texto em volta
+    const match = textResponse.match(/\{[\s\S]*\}/);
+    if (match) {
+      const result = JSON.parse(match[0]);
+      return result;
+    }
+    
+    return { found: false };
   } catch (error) {
     console.error("Erro ao consultar a IA Gemini (Placar):", error);
     return { found: false };
@@ -77,12 +81,14 @@ O formato JSON de cada jogo deve ser exato:
     });
 
     let textResponse = response.text.trim();
-    // Limpa possíveis marcações de markdown (```json e ```) que a IA possa adicionar
-    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+    // Extrai apenas a parte que é JSON (array), ignorando o texto em volta
+    const match = textResponse.match(/\[[\s\S]*\]/);
+    if (match) {
+      const result = JSON.parse(match[0]);
+      return Array.isArray(result) ? result : [];
+    }
     
-    const result = JSON.parse(textResponse);
-
-    return Array.isArray(result) ? result : [];
+    return [];
   } catch (error) {
     console.error("Erro ao buscar jogos com IA Gemini:", error);
     throw new Error("Falha ao processar os jogos com a Inteligência Artificial Gemini.");
