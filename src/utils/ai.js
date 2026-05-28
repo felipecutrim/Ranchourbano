@@ -1,15 +1,12 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 
 export async function fetchGameResultWithAI(homeTeam, awayTeam, dateStr) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "sua_chave_anthropic") {
-    throw new Error("Chave da API da Anthropic não configurada.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey || apiKey === "sua_chave_gemini") {
+    throw new Error("Chave da API do Gemini não configurada.");
   }
 
-  const anthropic = new Anthropic({
-    apiKey: apiKey,
-    dangerouslyAllowBrowser: true // Necessário para rodar no client-side
-  });
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `Você é um assistente especializado em futebol.
 Eu preciso saber o resultado do jogo entre ${homeTeam} (Mandante) e ${awayTeam} (Visitante) que ocorreu ou está marcado para a data ${dateStr}.
@@ -20,41 +17,35 @@ Se você tem conhecimento do resultado final ou do PLACAR PARCIAL ATUAL deste jo
 Se o jogo ainda não começou, foi cancelado, ou você não consegue encontrar nenhuma informação de placar para ele hoje, retorne APENAS:
 {"found": false}
 
-Não inclua nenhum texto adicional, apenas o JSON.`;
+Não inclua nenhum texto adicional, apenas o JSON válido.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 100,
-      temperature: 0,
-      system: "Você é uma API de dados esportivos. Você só responde com JSON válido.",
-      messages: [
-        { role: "user", content: prompt }
-      ]
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        temperature: 0,
+        responseMimeType: "application/json"
+      }
     });
 
-    const textResponse = response.content[0].text.trim();
-    // Tenta extrair o JSON do texto, caso o modelo inclua formatação markdown
-    const jsonStr = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(jsonStr);
+    const textResponse = response.text.trim();
+    const result = JSON.parse(textResponse);
 
     return result;
   } catch (error) {
-    console.error("Erro ao consultar a IA:", error);
+    console.error("Erro ao consultar a IA Gemini (Placar):", error);
     return { found: false };
   }
 }
 
 export async function fetchFixturesWithAI(dateStr, leagueName) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "sua_chave_anthropic") {
-    throw new Error("Chave da API da Anthropic não configurada.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey || apiKey === "sua_chave_gemini") {
+    throw new Error("Chave da API do Gemini não configurada.");
   }
 
-  const anthropic = new Anthropic({
-    apiKey: apiKey,
-    dangerouslyAllowBrowser: true
-  });
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `Você é um assistente especializado em futebol e calendários esportivos.
 Eu preciso da lista de jogos OFICIAIS marcados para o campeonato "${leagueName}" na data ${dateStr}.
@@ -75,23 +66,21 @@ O formato JSON de cada jogo deve ser exato:
 ]`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 500,
-      temperature: 0,
-      system: "Você é uma API de dados esportivos. Você só responde com um array JSON válido e mais nada.",
-      messages: [
-        { role: "user", content: prompt }
-      ]
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        temperature: 0,
+        responseMimeType: "application/json"
+      }
     });
 
-    const textResponse = response.content[0].text.trim();
-    const jsonStr = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(jsonStr);
+    const textResponse = response.text.trim();
+    const result = JSON.parse(textResponse);
 
     return Array.isArray(result) ? result : [];
   } catch (error) {
-    console.error("Erro ao buscar jogos com IA:", error);
-    throw new Error("Falha ao processar os jogos com a Inteligência Artificial.");
+    console.error("Erro ao buscar jogos com IA Gemini:", error);
+    throw new Error("Falha ao processar os jogos com a Inteligência Artificial Gemini.");
   }
 }
