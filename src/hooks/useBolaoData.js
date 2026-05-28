@@ -94,9 +94,16 @@ export function useBolaoData() {
       homeScore: Number(homeScore),
       awayScore: Number(awayScore)
     });
-    // Triggers cloud function or client-side calc
-    // Since we don't have cloud functions, let's calc client side here
     await recalculatePoints(currentWeek, gameId, Number(homeScore), Number(awayScore));
+  };
+
+  const updateGameDetails = async (gameId, updates) => {
+    await updateDoc(doc(db, 'games', gameId), updates);
+    if (updates.status === 'finished' && updates.homeScore !== undefined && updates.awayScore !== undefined) {
+      await recalculatePoints(currentWeek, gameId, Number(updates.homeScore), Number(updates.awayScore));
+    } else {
+      await fullRecalculate(currentWeek);
+    }
   };
 
   // Calculates points for all participants for the given game
@@ -227,6 +234,7 @@ export function useBolaoData() {
     addGame,
     removeGame,
     updateGameResult,
+    updateGameDetails,
     updateGameStatus,
     updateLiveScore,
     startNewWeek,

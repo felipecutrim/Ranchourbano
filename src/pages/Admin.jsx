@@ -15,14 +15,15 @@ export default function Admin() {
   const [auth, setAuth] = useState(false);
   const [password, setPassword] = useState('');
   
-  const { currentWeek, games, addGame, removeGame, updateGameStatus, updateGameResult, updateLiveScore, startNewWeek, loading } = useBolaoData();
+  const { currentWeek, games, addGame, removeGame, updateGameStatus, updateGameDetails, updateGameResult, updateLiveScore, startNewWeek, loading } = useBolaoData();
 
   const [homeTeam, setHomeTeam] = useState('');
   const [awayTeam, setAwayTeam] = useState('');
   const [gameDate, setGameDate] = useState('');
   const [gameTime, setGameTime] = useState('');
   
-  const [results, setResults] = useState({});
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ homeScore: '', awayScore: '', status: '', date: '', time: '' });
 
   // States for API Import
   const [importDate, setImportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -30,73 +31,7 @@ export default function Admin() {
   const [importedGames, setImportedGames] = useState([]);
   const [isImporting, setIsImporting] = useState(false);
 
-  // --- AUTOMATION LOOP ---
-  useEffect(() => {
-    if (!auth || games.length === 0) return;
-
-    let tickCount = 0;
-
-    const checkAutomations = async () => {
-      const now = new Date();
-      tickCount++;
-
-      for (const g of games) {
-        if (!g.date || !g.time) continue;
-        
-        // Parse game start time
-        const gameDateTime = new Date(`${g.date}T${g.time}`);
-        const diffInMinutes = (now - gameDateTime) / (1000 * 60);
-
-        // Rule 1: > 0 mins => In Progress
-        if (diffInMinutes > 0 && diffInMinutes < 105 && g.status === 'pending') {
-          console.log(`Jogo ${g.homeTeam} x ${g.awayTeam} começou!`);
-          await updateGameStatus(g.id, 'in_progress');
-        }
-
-        // Rule 1.5: If in_progress, update live score every 10 minutes (5 ticks of 2 mins)
-        // We also run it immediately on the first tick to get initial score if just entering
-        if (g.status === 'in_progress' && (tickCount === 1 || tickCount % 5 === 0)) {
-          console.log(`Buscando placar ao vivo para ${g.homeTeam} x ${g.awayTeam}...`);
-          const aiResult = await fetchGameResultWithAI(g.homeTeam, g.awayTeam, g.date);
-          if (aiResult.found && aiResult.homeScore !== undefined && aiResult.awayScore !== undefined) {
-            await updateLiveScore(g.id, aiResult.homeScore, aiResult.awayScore);
-          }
-        }
-
-        // Rule 2: > 105 mins => Searching (if it was in progress or pending)
-        if (diffInMinutes >= 105 && (g.status === 'in_progress' || g.status === 'pending')) {
-          console.log(`Jogo ${g.homeTeam} x ${g.awayTeam} chegou aos 105 minutos. Iniciando busca final...`);
-          await updateGameStatus(g.id, 'searching');
-          
-          // Trigger AI Search
-          const aiResult = await fetchGameResultWithAI(g.homeTeam, g.awayTeam, g.date);
-          if (aiResult.found && aiResult.homeScore !== undefined && aiResult.awayScore !== undefined) {
-            await updateGameResult(g.id, aiResult.homeScore, aiResult.awayScore);
-          } else {
-            // Se falhou, volta pra searching para tentar de novo no próximo ciclo
-            // Ou muda para 'verifying' (Verificando)
-            await updateGameStatus(g.id, 'verifying');
-          }
-        }
-        
-        // Rule 3: Re-try AI search if stuck in verifying and time is still passing
-        if (diffInMinutes >= 105 && g.status === 'verifying') {
-          const aiResult = await fetchGameResultWithAI(g.homeTeam, g.awayTeam, g.date);
-          if (aiResult.found && aiResult.homeScore !== undefined && aiResult.awayScore !== undefined) {
-            await updateGameResult(g.id, aiResult.homeScore, aiResult.awayScore);
-          }
-        }
-      }
-    };
-
-    // Roda a verificação imediatamente ao carregar/atualizar
-    checkAutomations();
-
-    const intervalId = setInterval(checkAutomations, 2 * 60 * 1000); // 2 minutes
-    return () => clearInterval(intervalId);
-  }, [auth, games, updateGameStatus, updateGameResult]);
-
-  // --- /AUTOMATION LOOP ---
+  // Automação removida a pedido do usuário. Tudo agora é manual.
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -117,10 +52,44 @@ export default function Admin() {
     setGameTime('');
   };
 
-  const handleSaveResult = async (gameId) => {
-    const res = results[gameId];
-    if (!res || res.home === undefined || res.away === undefined) return;
-    await updateGameResult(gameId, res.home, res.away);
+  const handleEditClick = (g) => {
+    setEditingId(g.id);
+    setEditForm({
+      homeScore: g.homeScore ?? '',
+      awayScore: g.awayScore ?? '',
+      status: g.status,
+      date: g.date || '',
+      time: g.time || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+    const updates = {
+      status: editForm.status,
+      date: editForm.date,
+      time: editForm.time
+    };
+    if (editForm.homeScore !== '') updates.homeScore = Number(editForm.homeScore);
+    if (editForm.awayScore !== '') updates.awayScore = Number(editForm.awayScore);
+    
+    await updateGameDetails(editingId, updates);
+    setEditingId(null);
+  };
+
+  const handleFetchSingleAI = async (g) => {
+    alert("Buscando placar atualizado com o Gemini...");
+    const aiResult = await fetchGameResultWithAI(g.homeTeam, g.awayTeam, g.date);
+    if (aiResult.found && aiResult.homeScore !== undefined && aiResult.awayScore !== undefined) {
+      setEditForm(prev => ({
+        ...prev,
+        homeScore: aiResult.homeScore,
+        awayScore: aiResult.awayScore
+      }));
+      alert(`O Gemini encontrou: ${aiResult.homeScore} x ${aiResult.awayScore}. Clique em Salvar para confirmar.`);
+    } else {
+      alert(`O Gemini não conseguiu encontrar o resultado exato agora. Verifique manualmente.`);
+    }
   };
 
   const handleAiFetch = async () => {
@@ -298,9 +267,58 @@ export default function Admin() {
           let statusText = 'AGUARDANDO';
           let statusClass = 'text-text-muted';
           if (g.status === 'in_progress') { statusText = 'EM ANDAMENTO'; statusClass = 'text-success'; }
-          if (g.status === 'searching') { statusText = 'BUSCANDO RESULTADO...'; statusClass = 'text-gold'; }
-          if (g.status === 'verifying') { statusText = 'VERIFICANDO...'; statusClass = 'text-gold'; }
+          if (g.status === 'searching' || g.status === 'verifying') { statusText = 'VERIFICANDO...'; statusClass = 'text-gold'; }
           if (g.status === 'finished') { statusText = 'ENCERRADO'; statusClass = 'text-success'; }
+
+          if (editingId === g.id) {
+            return (
+              <div key={g.id} className="match-card" style={{ border: '1px solid var(--color-gold)' }}>
+                <div className="mb-2 text-gold text-center"><strong>Editando: {g.homeTeam} x {g.awayTeam}</strong></div>
+                
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="form-group mb-0">
+                    <label style={{ fontSize: '0.8rem' }}>Data</label>
+                    <input type="date" className="form-input" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} />
+                  </div>
+                  <div className="form-group mb-0">
+                    <label style={{ fontSize: '0.8rem' }}>Hora</label>
+                    <input type="time" className="form-input" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="form-group mb-2">
+                  <label style={{ fontSize: '0.8rem' }}>Status</label>
+                  <select className="form-input" value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}>
+                    <option value="pending">Pendente (Aberto)</option>
+                    <option value="in_progress">Em Andamento</option>
+                    <option value="finished">Encerrado</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 mb-4 justify-center">
+                  <div className="text-center">
+                    <label style={{ fontSize: '0.8rem' }}>{g.homeTeam}</label>
+                    <input type="number" className="form-input score-input" value={editForm.homeScore} onChange={e => setEditForm({...editForm, homeScore: e.target.value})} />
+                  </div>
+                  <span className="score-divider mt-4">X</span>
+                  <div className="text-center">
+                    <label style={{ fontSize: '0.8rem' }}>{g.awayTeam}</label>
+                    <input type="number" className="form-input score-input" value={editForm.awayScore} onChange={e => setEditForm({...editForm, awayScore: e.target.value})} />
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <button onClick={() => handleFetchSingleAI(g)} className="btn btn-sm" style={{ backgroundColor: '#4f46e5' }}>
+                    <Bot size={16}/> Preencher Placar com Gemini
+                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingId(null)} className="btn btn-sm" style={{ flex: 1 }}>Cancelar</button>
+                    <button onClick={handleSaveEdit} className="btn btn-gold btn-sm" style={{ flex: 1 }}>Salvar Alterações</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div key={g.id} className="match-card">
@@ -312,31 +330,11 @@ export default function Admin() {
               </div>
               <div className="match-teams">
                 <div className="team home">{g.homeTeam}</div>
-                
-                {g.status !== 'finished' ? (
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="number" 
-                      className="form-input score-input" 
-                      value={results[g.id]?.home ?? ''}
-                      onChange={e => setResults({...results, [g.id]: {...results[g.id], home: e.target.value}})}
-                    />
-                    <span className="score-divider">X</span>
-                    <input 
-                      type="number" 
-                      className="form-input score-input" 
-                      value={results[g.id]?.away ?? ''}
-                      onChange={e => setResults({...results, [g.id]: {...results[g.id], away: e.target.value}})}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="form-input score-input">{g.homeScore}</div>
-                    <span className="score-divider">X</span>
-                    <div className="form-input score-input">{g.awayScore}</div>
-                  </div>
-                )}
-
+                <div className="flex items-center gap-2">
+                  <div className="form-input score-input" style={{ backgroundColor: 'transparent', border: 'none' }}>{g.homeScore ?? '-'}</div>
+                  <span className="score-divider">X</span>
+                  <div className="form-input score-input" style={{ backgroundColor: 'transparent', border: 'none' }}>{g.awayScore ?? '-'}</div>
+                </div>
                 <div className="team away">{g.awayTeam}</div>
               </div>
               
@@ -344,11 +342,9 @@ export default function Admin() {
                 <button onClick={() => removeGame(g.id)} className="btn btn-danger btn-sm">
                   <Trash2 size={16}/> Remover
                 </button>
-                {g.status !== 'finished' && (
-                  <button onClick={() => handleSaveResult(g.id)} className="btn btn-sm text-gold">
-                    Salvar Manual
-                  </button>
-                )}
+                <button onClick={() => handleEditClick(g)} className="btn btn-sm text-gold">
+                  Editar Jogo
+                </button>
               </div>
             </div>
           );
