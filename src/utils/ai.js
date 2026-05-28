@@ -71,7 +71,8 @@ O formato JSON de cada jogo deve ser exato:
       contents: prompt,
       config: {
         temperature: 0,
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }]
       }
     });
 
